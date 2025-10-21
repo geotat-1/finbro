@@ -178,7 +178,7 @@ input[type="number"] {
     <input type="text" id="date" placeholder="Дата (дд.мм.гггг)">
     <select id="from"></select>
     <select id="to"></select>
-    <input type="number" id="amount" placeholder="Сумма" step="0.01" pattern="[0-9]*" inputmode="numeric">
+    <input type="text" id="amount" placeholder="Сумма" inputmode="decimal">
     <button id="addBtn">Добавить</button>
     <button onclick="closeModal()">Закрыть</button>
   </div>
@@ -442,7 +442,7 @@ async function submitTransaction(){
   const date = document.getElementById('date').value;
   const from = document.getElementById('from').value;
   const to = document.getElementById('to').value;
-  const amountInput = document.getElementById('amount').value;
+  const amountInput = document.getElementById('amount').value.replace(',', '.');
   
   if (!date || !from || !to || !amountInput) {
     alert('Заполните все обязательные поля');
