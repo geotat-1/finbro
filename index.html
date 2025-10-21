@@ -184,19 +184,25 @@ function resetGasUrl() {
   document.getElementById('loader').style.display = 'none';
 }
 
-// Альтернативный подход с повторными попытками
+// Альтернативный подход с повторными попытками и CORS proxy
 async function fetchWithRetry(url, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await fetch(url);
+      // Используем CORS proxy для обхода ограничений
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      
+      const response = await fetch(proxyUrl);
       
       if (response.ok) {
         const text = await response.text();
         try {
           return JSON.parse(text);
         } catch (e) {
+          console.warn('Response is not JSON:', text);
           return text;
         }
+      } else {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
     } catch (error) {
       console.warn(`Attempt ${i + 1} failed:`, error);
