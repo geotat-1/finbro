@@ -5,8 +5,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Финансы">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta charset="UTF-8">
 <title>Финансы</title>
 <style>
@@ -15,10 +14,9 @@ html, body {
   font-family:'JetBrains Mono', monospace;
   background:#000; color:#fff;
   display:flex; flex-direction:column; align-items:center;
-  -webkit-text-size-adjust: 100%;
-  -ms-text-size-adjust: 100%;
 }
 
+/* Простой спиннер */
 #loader {
   position:fixed; top:50%; left:50%;
   width:20px; height:20px; background:#fff;
@@ -27,8 +25,10 @@ html, body {
 }
 @keyframes pulse { 0%,100% {opacity:0.2;} 50% {opacity:1;} }
 
+/* Скрываем основной контент до загрузки */
 #mainContent { display:none; width:100%; flex:1 1 auto; flex-direction:column; align-items:center; }
 
+/* Баланс и список */
 h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
 #totalBalance{ font-size:1rem; margin-bottom:1.6rem; text-align:center;}
 #accountsList{ width:90%; max-width:400px; flex:1 1 auto; overflow-y:auto;}
@@ -36,15 +36,17 @@ h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
 .account-name{display:block; font-size:1.1rem; margin-bottom:0.15em;}
 .account-balance{ color:#ccc;}
 
+/* Блок долгов */
 #debtsSection { width:90%; max-width:400px; margin:1em 0; display:none; text-align:center; }
 #debtsSection h2 { font-weight:400; font-size:1rem; margin-bottom:1em; }
 .debt-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #333; }
 .debt-positive { color:#4CAF50; }
 .debt-negative { color:#f44336; }
 
+/* Кнопки */
 .buttons{ display:flex; flex-direction:column; gap:10px; position:fixed; bottom:20px; width:90%; max-width:400px; }
 .button-row{ display:flex; justify-content:space-around; gap:10px; }
-.btn{ background:#111; border:1px solid #333; padding:12px; border-radius:10px; cursor:pointer; flex:1; transition:0.2s; font-family:inherit; font-size:16px; }
+.btn{ background:#111; border:1px solid #333; padding:12px; border-radius:10px; cursor:pointer; flex:1; transition:0.2s; font-family:inherit; }
 .btn:hover{ background:#222; }
 .income-btn{ color:#4CAF50; }
 .expense-btn{ color:#f44336; }
@@ -52,6 +54,7 @@ h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
 .transfer-btn{ color:#fff; }
 #historyBtn{ position:fixed; top:10px; right:10px; background:transparent; border:none; color:#444; cursor:pointer; font-size:12px;}
 
+/* Модалки */
 #modal,#historyModal{
   position:fixed; top:0; left:0; width:100%; height:100%;
   background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center; z-index:999;
@@ -61,13 +64,15 @@ h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
   width:95%; max-width:380px; max-height:90%; overflow-y:auto;
   display:flex; flex-direction:column; gap:10px;
 }
-input,select{ padding:10px; border-radius:6px; border:1px solid #333; background:#000; color:#fff; font-family:inherit; font-size:16px; }
-.modal-content button{ background:#333; color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer; font-size:16px; }
+input,select{ padding:10px; border-radius:6px; border:1px solid #333; background:#000; color:#fff; font-family:inherit;}
+.modal-content button{ background:#333; color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer;}
 .modal-content button:hover{ background:#555;}
 #historyList{ font-size:0.85rem; max-height:300px; overflow-y:auto;}
 .history-item{ display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #333;}
 .delete-btn{ color:#f55; cursor:pointer; border:none; background:none; font-size:0.8rem;}
+@media(max-width:480px){ .modal-content{ max-width:95%; padding:16px; } }
 
+/* Модалка для ввода URL */
 #urlModal {
   position:fixed; top:0; left:0; width:100%; height:100%;
   background:rgba(0,0,0,0.95); display:flex; align-items:center; justify-content:center; z-index:1000;
@@ -77,14 +82,16 @@ input,select{ padding:10px; border-radius:6px; border:1px solid #333; background
   width:90%; max-width:400px; text-align:center;
 }
 .url-modal-content h2 { margin-bottom:20px; }
-.url-modal-content input { width:100%; margin-bottom:20px; font-size:16px; }
-.url-modal-content button { width:100%; margin:5px 0; padding:12px; background:#333; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:16px; }
+.url-modal-content input { width:100%; margin-bottom:20px; }
+.url-modal-content button { width:100%; margin:5px 0; padding:12px; background:#333; color:#fff; border:none; border-radius:8px; cursor:pointer; }
+.url-modal-content button:hover { background:#555; }
 </style>
 </head>
 <body>
 
 <div id="loader"></div>
 
+<!-- Модальное окно для ввода URL -->
 <div id="urlModal">
   <div class="url-modal-content">
     <h2>Введите URL вашего приложения</h2>
@@ -142,47 +149,37 @@ input,select{ padding:10px; border-radius:6px; border:1px solid #333; background
 </div>
 
 <script>
+// Глобальная переменная для URL
 let GAS_WEBAPP_URL = null;
 let currentType = 'income';
 let cache = {accounts:[], counterparties:[], debts:[], transactions:[]};
 
-async function apiCall(action, data = null) {
-  const url = data ? 
-    `${GAS_WEBAPP_URL}?action=${action}&${new URLSearchParams(data)}` :
-    `${GAS_WEBAPP_URL}?action=${action}&timestamp=${Date.now()}`;
-  
-  try {
-    const response = await fetch(url, {
-      method: data ? 'POST' : 'GET',
-      redirect: 'follow'
-    });
-    
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    
-    const result = await response.json();
-    if (!result.success) throw new Error(result.error);
-    
-    return result.data;
-  } catch (error) {
-    console.error('API call failed:', error);
-    throw error;
-  }
-}
-
+// Функция для сохранения URL
 function saveGasUrl() {
   const urlInput = document.getElementById('gasUrlInput').value.trim();
-  if (!urlInput || !urlInput.startsWith('https://')) {
-    alert('Введите корректный URL начинающийся с https://');
+  
+  if (!urlInput) {
+    alert('Пожалуйста, введите URL');
     return;
   }
   
+  // Проверяем базовый формат URL
+  if (!urlInput.startsWith('https://')) {
+    alert('URL должен начинаться с https://');
+    return;
+  }
+  
+  // Сохраняем URL в localStorage
   localStorage.setItem('GAS_WEBAPP_URL', urlInput);
   GAS_WEBAPP_URL = urlInput;
+  
+  // Скрываем модалку URL и инициализируем приложение
   document.getElementById('urlModal').style.display = 'none';
   document.getElementById('loader').style.display = 'block';
   initApp();
 }
 
+// Функция для сброса URL (на случай ошибок)
 function resetGasUrl() {
   localStorage.removeItem('GAS_WEBAPP_URL');
   GAS_WEBAPP_URL = null;
@@ -191,13 +188,30 @@ function resetGasUrl() {
   document.getElementById('loader').style.display = 'none';
 }
 
+// Простая функция fetch с повторными попытками
+async function fetchWithRetry(url, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.warn(`Attempt ${i + 1} failed:`, error);
+      if (i === retries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+}
+
+// Инициализация приложения
 async function initApp() {
   try {
     const [accounts, counterparties, debts, transactions] = await Promise.all([
-      apiCall('getAccounts'),
-      apiCall('getCounterparties'),
-      apiCall('getDebts'),
-      apiCall('getTransactions')
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getAccounts&timestamp=${Date.now()}`),
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getCounterparties&timestamp=${Date.now()}`),
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getDebts&timestamp=${Date.now()}`),
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getTransactions&timestamp=${Date.now()}`)
     ]);
     
     cache = {accounts, counterparties, debts, transactions};
@@ -209,12 +223,30 @@ async function initApp() {
     document.getElementById('mainContent').style.display = 'flex';
     
   } catch (error) {
-    console.error('Init failed:', error);
+    console.error('Ошибка загрузки данных:', error);
     alert('Ошибка загрузки данных. Проверьте URL и настройки GAS.');
     resetGasUrl();
   }
 }
 
+// Основная инициализация при загрузке страницы
+function init() {
+  // Пытаемся получить URL из localStorage
+  GAS_WEBAPP_URL = localStorage.getItem('GAS_WEBAPP_URL');
+  
+  if (GAS_WEBAPP_URL) {
+    // Если URL есть, сразу запускаем приложение
+    document.getElementById('urlModal').style.display = 'none';
+    document.getElementById('loader').style.display = 'block';
+    initApp();
+  } else {
+    // Если URL нет, показываем модалку для ввода
+    document.getElementById('urlModal').style.display = 'flex';
+    document.getElementById('loader').style.display = 'none';
+  }
+}
+
+// Рендер аккаунтов
 function renderAccounts(){
   const container = document.getElementById('accountsList');
   container.innerHTML = '';
@@ -231,9 +263,11 @@ function renderAccounts(){
   document.getElementById('totalBalance').textContent = total.toFixed(2);
 }
 
+// Рендер долгов
 function renderDebts(){
   const container = document.getElementById('debtsList');
   const section = document.getElementById('debtsSection');
+  
   container.innerHTML = '';
   
   if (!cache.debts || cache.debts.length === 0) {
@@ -242,6 +276,7 @@ function renderDebts(){
   }
   
   section.style.display = 'block';
+  
   cache.debts.forEach(debt => {
     const amount = Number(debt.balance || 0);
     if (amount !== 0) {
@@ -258,6 +293,7 @@ function renderDebts(){
   });
 }
 
+// Форматирование даты в формате дд.мм.гггг
 function formatDate(date = new Date()) {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -265,40 +301,54 @@ function formatDate(date = new Date()) {
   return `${day}.${month}.${year}`;
 }
 
+// Заполнение выпадающих списков для разных типов операций
 function fillSelects(){
   const {accounts, counterparties, debts} = cache;
+  
+  // Очищаем все селекты
   document.getElementById('from').innerHTML = '<option value="">Выберите...</option>';
   document.getElementById('to').innerHTML = '<option value="">Выберите...</option>';
+  
+  // Устанавливаем текущую дату по умолчанию
   document.getElementById('date').value = formatDate();
   
   switch(currentType){
     case 'income':
+      // Доход: From - контрагенты income, To - счета
       document.getElementById('from').innerHTML += counterparties
         .filter(c => c.type === 'income')
         .map(c => `<option value="${c.name}">${c.name}</option>`).join('');
       document.getElementById('to').innerHTML += accounts
         .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
       break;
+      
     case 'expense':
+      // Расход: From - счета, To - контрагенты expense
       document.getElementById('from').innerHTML += accounts
         .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
       document.getElementById('to').innerHTML += counterparties
         .filter(c => c.type === 'expense')
         .map(c => `<option value="${c.name}">${c.name}</option>`).join('');
       break;
+
     case 'debt_given':
-      document.getElementById('from').innerHTML += debts
+      // Взял долг: From - должники из debts, To - счета
+      document.getElementById('from').innerHTML += cache.debts
         .map(d => `<option value="${d.name}">${d.name}</option>`).join('');
       document.getElementById('to').innerHTML += accounts
         .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
       break;
+
     case 'debt_returned':
+      // Вернул долг: From - счета, To - должники из debts
       document.getElementById('from').innerHTML += accounts
         .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
-      document.getElementById('to').innerHTML += debts
+      document.getElementById('to').innerHTML += cache.debts
         .map(d => `<option value="${d.name}">${d.name}</option>`).join('');
       break;
+
     case 'transfer':
+      // Перевод: From - счета, To - счета
       document.getElementById('from').innerHTML += accounts
         .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
       document.getElementById('to').innerHTML += accounts
@@ -307,14 +357,20 @@ function fillSelects(){
   }
 }
 
+// Модалки
 function openModal(type){
   currentType = type;
+  
+  // Устанавливаем заголовок модалки
   const titles = {
-    'income': 'Добавить доход', 'expense': 'Добавить расход', 
-    'debt_given': 'Взял долг', 'transfer': 'Перевод между счетами',
+    'income': 'Добавить доход',
+    'expense': 'Добавить расход', 
+    'debt_given': 'Взял долг',
+    'transfer': 'Перевод между счетами',
     'debt_returned': 'Вернул долг'
   };
   document.getElementById('modalTitle').textContent = titles[type] || 'Добавить операцию';
+  
   fillSelects();
   document.getElementById('modal').style.display = 'flex';
   document.getElementById('addBtn').onclick = submitTransaction;
@@ -322,14 +378,17 @@ function openModal(type){
 
 function closeModal(){ 
   document.getElementById('modal').style.display = 'none'; 
+  // Очищаем поля
   document.getElementById('date').value = '';
   document.getElementById('amount').value = '';
 }
 
+// Форматирование суммы в формат 1234,00
 function formatAmount(amount) {
   return parseFloat(amount).toFixed(2).replace('.', ',');
 }
 
+// Добавление транзакции
 async function submitTransaction(){
   const date = document.getElementById('date').value;
   const from = document.getElementById('from').value;
@@ -341,37 +400,47 @@ async function submitTransaction(){
     return;
   }
   
+  // Проверяем формат даты
   const dateRegex = /^\d{2}\.\d{2}\.\d{4}$/;
   if (!dateRegex.test(date)) {
     alert('Дата должна быть в формате дд.мм.гггг');
     return;
   }
   
+  // Все суммы записываются с плюсом
   const amount = Math.abs(parseFloat(amountInput));
   const formattedAmount = formatAmount(amount);
   
+  // Отправляем данные в правильном формате для таблицы
+  const params = new URLSearchParams({
+    action: 'addTransaction',
+    date: date,
+    from: from,
+    to: to,
+    amount: formattedAmount
+  });
+  
   try {
-    await apiCall('addTransaction', {
-      date: date,
-      from: from,
-      to: to,
-      amount: formattedAmount
-    });
-    
+    const url = `${GAS_WEBAPP_URL}?${params.toString()}`;
+    await fetchWithRetry(url);
     closeModal();
+    
+    // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ ПОСЛЕ ДОБАВЛЕНИЯ ОПЕРАЦИИ
     await reloadAllData();
     
   } catch (error) {
+    console.error('Ошибка при добавлении транзакции:', error);
     alert('Ошибка при добавлении транзакции: ' + error.message);
   }
 }
 
+// Функция для перезагрузки всех данных
 async function reloadAllData() {
   try {
     const [accounts, debts, transactions] = await Promise.all([
-      apiCall('getAccounts'),
-      apiCall('getDebts'),
-      apiCall('getTransactions')
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getAccounts&timestamp=${Date.now()}`),
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getDebts&timestamp=${Date.now()}`),
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getTransactions&timestamp=${Date.now()}`)
     ]);
     
     cache.accounts = accounts;
@@ -380,13 +449,16 @@ async function reloadAllData() {
     
     renderAccounts();
     renderDebts();
+    
   } catch (error) {
+    console.error('Ошибка при обновлении данных:', error);
     alert('Ошибка при обновлении данных');
   }
 }
 
+// История
 async function openHistory(){
-  const list = await apiCall('getTransactions');
+  const list = await fetchWithRetry(`${GAS_WEBAPP_URL}?action=getTransactions&timestamp=${Date.now()}`);
   const div = document.getElementById('historyList');
   div.innerHTML = '';
   
@@ -408,11 +480,14 @@ function closeHistory(){
 }
 
 async function deleteTx(index){
-  await apiCall('deleteTransaction', {index: index});
+  await fetchWithRetry(`${GAS_WEBAPP_URL}?action=deleteTransaction&index=${index}`);
   openHistory();
+  
+  // ОБНОВЛЯЕМ ДАННЫЕ ПОСЛЕ УДАЛЕНИЯ
   await reloadAllData();
 }
 
+// Назначение обработчиков кнопок
 function assignButtons(){
   document.getElementById('incomeBtn').onclick = () => openModal('income');
   document.getElementById('expenseBtn').onclick = () => openModal('expense');
@@ -422,19 +497,7 @@ function assignButtons(){
   document.getElementById('historyBtn').onclick = openHistory;
 }
 
-function init() {
-  GAS_WEBAPP_URL = localStorage.getItem('GAS_WEBAPP_URL');
-  if (GAS_WEBAPP_URL) {
-    document.getElementById('urlModal').style.display = 'none';
-    document.getElementById('loader').style.display = 'block';
-    initApp();
-  } else {
-    document.getElementById('urlModal').style.display = 'flex';
-    document.getElementById('loader').style.display = 'none';
-  }
-}
-
-// Добавляем кнопку сброса URL
+// Добавляем кнопку сброса URL в историю (для отладки)
 document.addEventListener('DOMContentLoaded', function() {
   const resetBtn = document.createElement('button');
   resetBtn.textContent = 'Сброс URL';
