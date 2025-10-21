@@ -2,15 +2,22 @@
 <html lang="ru">
 <head>
 <link rel="apple-touch-icon" href="/finbro/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Финансы">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta charset="UTF-8">
 <title>Финансы</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 html, body {
   margin:0; padding:0; width:100%; height:100%;
   font-family:'JetBrains Mono', monospace;
   background:#000; color:#fff;
   display:flex; flex-direction:column; align-items:center;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Простой спиннер */
@@ -34,7 +41,8 @@ h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
 .account-balance{ color:#ccc;}
 
 /* Блок долгов */
-#debtsSection { width:90%; max-width:400px; margin:20px 0; display:none; }
+#debtsSection { width:90%; max-width:400px; margin:1em 0; display:none; text-align:center; }
+#debtsSection h2 { font-weight:400; font-size:1rem; margin-bottom:1em; }
 .debt-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #333; }
 .debt-positive { color:#4CAF50; }
 .debt-negative { color:#f44336; }
@@ -42,7 +50,7 @@ h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
 /* Кнопки */
 .buttons{ display:flex; flex-direction:column; gap:10px; position:fixed; bottom:20px; width:90%; max-width:400px; }
 .button-row{ display:flex; justify-content:space-around; gap:10px; }
-.btn{ background:#111; border:1px solid #333; padding:12px; border-radius:10px; cursor:pointer; flex:1; transition:0.2s; font-family:inherit; }
+.btn{ background:#111; border:1px solid #333; padding:12px; border-radius:10px; cursor:pointer; flex:1; transition:0.2s; font-family:inherit; font-size:16px; }
 .btn:hover{ background:#222; }
 .income-btn{ color:#4CAF50; }
 .expense-btn{ color:#f44336; }
@@ -60,8 +68,8 @@ h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
   width:95%; max-width:380px; max-height:90%; overflow-y:auto;
   display:flex; flex-direction:column; gap:10px;
 }
-input,select{ padding:10px; border-radius:6px; border:1px solid #333; background:#000; color:#fff; font-family:inherit;}
-.modal-content button{ background:#333; color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer;}
+input,select{ padding:10px; border-radius:6px; border:1px solid #333; background:#000; color:#fff; font-family:inherit; font-size:16px; }
+.modal-content button{ background:#333; color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer; font-size:16px; }
 .modal-content button:hover{ background:#555;}
 #historyList{ font-size:0.85rem; max-height:300px; overflow-y:auto;}
 .history-item{ display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #333;}
@@ -78,8 +86,8 @@ input,select{ padding:10px; border-radius:6px; border:1px solid #333; background
   width:90%; max-width:400px; text-align:center;
 }
 .url-modal-content h2 { margin-bottom:20px; }
-.url-modal-content input { width:100%; margin-bottom:20px; }
-.url-modal-content button { width:100%; margin:5px 0; padding:12px; background:#333; color:#fff; border:none; border-radius:8px; cursor:pointer; }
+.url-modal-content input { width:100%; margin-bottom:20px; font-size:16px; }
+.url-modal-content button { width:100%; margin:5px 0; padding:12px; background:#333; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:16px; }
 .url-modal-content button:hover { background:#555; }
 </style>
 </head>
@@ -184,24 +192,27 @@ function resetGasUrl() {
   document.getElementById('loader').style.display = 'none';
 }
 
-// Прямой запрос с обработкой CORS ошибок
+// Альтернативный подход с CORS proxy
 async function fetchWithRetry(url, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
-      // Пробуем прямой запрос
-      const response = await fetch(url, {
-        mode: 'no-cors' // Это обойдет CORS, но response будет opaque
-      });
+      // Используем простой CORS proxy
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
       
-      // С no-cors мы не можем прочитать response, но можем проверить статус
-      if (response.type === 'opaque') {
-        // Если запрос прошел, но мы не можем прочитать ответ,
-        // нужно использовать другой подход
-        console.log('Request sent successfully (opaque response)');
-        // Для тестирования возвращаем mock данные
-        return getMockData(url);
+      const response = await fetch(proxyUrl);
+      
+      if (response.ok) {
+        const result = await response.json();
+        // allorigins.win возвращает данные в поле 'contents'
+        const data = JSON.parse(result.contents);
+        if (data.success) {
+          return data.data;
+        } else {
+          throw new Error(data.error);
+        }
+      } else {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
     } catch (error) {
       console.warn(`Attempt ${i + 1} failed:`, error);
       if (i === retries - 1) throw error;
@@ -210,62 +221,44 @@ async function fetchWithRetry(url, retries = 3) {
   }
 }
 
-// Mock данные для тестирования
-function getMockData(url) {
-  if (url.includes('getAccounts')) {
-    return [
-      {name: "Яндекс Банк", balance: -300, colour: "#484268"},
-      {name: "Наличные", balance: 3702, colour: "#1CAD66"}
-    ];
+// Функция для отправки POST запросов через proxy
+async function postToGAS(url, data, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const formData = new URLSearchParams();
+      for (const key in data) {
+        formData.append(key, data[key]);
+      }
+      
+      // Для POST запросов используем другой подход
+      const fullUrl = `${url}?${formData.toString()}`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(fullUrl)}`;
+      
+      const response = await fetch(proxyUrl);
+      
+      if (response.ok) {
+        const result = await response.json();
+        const data = JSON.parse(result.contents);
+        if (data.success) {
+          return data.data;
+        } else {
+          throw new Error(data.error);
+        }
+      } else {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.warn(`POST attempt ${i + 1} failed:`, error);
+      if (i === retries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
   }
-  if (url.includes('getCounterparties')) {
-    return [
-      {type: "income", name: "Арендный платёж"},
-      {type: "expense", name: "Еда вне дома"}
-    ];
-  }
-  if (url.includes('getDebts')) {
-    return [
-      {name: "Долг 1", balance: 1000},
-      {name: "Долг 2", balance: -500}
-    ];
-  }
-  if (url.includes('getTransactions')) {
-    return [];
-  }
-  return [];
 }
 
 // Инициализация приложения
 async function initApp() {
   try {
     console.log('Starting app initialization with URL:', GAS_WEBAPP_URL);
-    
-    // Тестовый запрос для диагностики
-    const testUrl = `${GAS_WEBAPP_URL}?action=getAccounts&timestamp=${Date.now()}`;
-    console.log('Testing URL:', testUrl);
-    
-    // Делаем тестовый запрос с подробным логированием
-    const testResponse = await fetch(testUrl);
-    console.log('Test response status:', testResponse.status);
-    console.log('Test response ok:', testResponse.ok);
-    console.log('Test response headers:', [...testResponse.headers].map(h => h.join(': ')));
-    
-    if (!testResponse.ok) {
-      throw new Error(`HTTP error! status: ${testResponse.status}`);
-    }
-    
-    const testText = await testResponse.text();
-    console.log('Test response text:', testText);
-    
-    let testData;
-    try {
-      testData = JSON.parse(testText);
-      console.log('Test JSON parsed successfully:', testData);
-    } catch (e) {
-      console.error('Failed to parse test response as JSON:', e);
-      throw new Error('Response is not valid JSON');
-    }
     
     // Если тест прошел успешно, загружаем все данные
     const [accounts, counterparties, debts, transactions] = await Promise.all([
@@ -298,9 +291,6 @@ async function initApp() {
     
   } catch (error) {
     console.error('Full error details:', error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
     
     let errorMessage = 'Ошибка загрузки данных. \n\n';
     
@@ -429,20 +419,20 @@ function fillSelects(){
       break;
 
     case 'debt_given':
-    // Взял долг: From - должники из debts, To - счета
-        document.getElementById('from').innerHTML += cache.debts
+      // Взял долг: From - должники из debts, To - счета
+      document.getElementById('from').innerHTML += cache.debts
         .map(d => `<option value="${d.name}">${d.name}</option>`).join('');
-        document.getElementById('to').innerHTML += accounts
+      document.getElementById('to').innerHTML += accounts
         .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
-        break;
+      break;
 
     case 'debt_returned':
-    // Вернул долг: From - счета, To - должники из debts
-        document.getElementById('from').innerHTML += accounts
+      // Вернул долг: From - счета, To - должники из debts
+      document.getElementById('from').innerHTML += accounts
         .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
-     document.getElementById('to').innerHTML += cache.debts
+      document.getElementById('to').innerHTML += cache.debts
         .map(d => `<option value="${d.name}">${d.name}</option>`).join('');
-        break;
+      break;
 
     case 'transfer':
       // Перевод: From - счета, To - счета
@@ -508,18 +498,15 @@ async function submitTransaction(){
   const amount = Math.abs(parseFloat(amountInput));
   const formattedAmount = formatAmount(amount);
   
-  // Отправляем данные в правильном формате для таблицы
-  const params = new URLSearchParams({
-    action: 'addTransaction',
-    date: date,
-    from: from,
-    to: to,
-    amount: formattedAmount
-  });
-  
   try {
-    const url = `${GAS_WEBAPP_URL}?${params.toString()}`;
-    await fetchWithRetry(url);
+    await postToGAS(GAS_WEBAPP_URL, {
+      action: 'addTransaction',
+      date: date,
+      from: from,
+      to: to,
+      amount: formattedAmount
+    });
+    
     closeModal();
     
     // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ ПОСЛЕ ДОБАВЛЕНИЯ ОПЕРАЦИИ
@@ -577,7 +564,11 @@ function closeHistory(){
 }
 
 async function deleteTx(index){
-  await fetchWithRetry(`${GAS_WEBAPP_URL}?action=deleteTransaction&index=${index}`);
+  await postToGAS(GAS_WEBAPP_URL, {
+    action: 'deleteTransaction',
+    index: index
+  });
+  
   openHistory();
   
   // ОБНОВЛЯЕМ ДАННЫЕ ПОСЛЕ УДАЛЕНИЯ
@@ -601,20 +592,6 @@ document.addEventListener('DOMContentLoaded', function() {
   resetBtn.style = 'position:fixed; top:10px; left:10px; background:transparent; border:1px solid #333; color:#444; cursor:pointer; font-size:12px; padding:5px; z-index:1001;';
   resetBtn.onclick = resetGasUrl;
   document.body.appendChild(resetBtn);
-});
-
-// Добавляем кнопку для просмотра логов (для отладки)
-document.addEventListener('DOMContentLoaded', function() {
-  const logBtn = document.createElement('button');
-  logBtn.textContent = 'Показать логи';
-  logBtn.style = 'position:fixed; top:40px; left:10px; background:transparent; border:1px solid #333; color:#444; cursor:pointer; font-size:12px; padding:5px; z-index:1001;';
-  logBtn.onclick = () => {
-    const logs = [...document.querySelectorAll('script')]
-      .map(s => s.src || s.innerHTML)
-      .filter(s => s.includes('google') || s.includes('script'));
-    alert('Текущий URL: ' + GAS_WEBAPP_URL + '\n\nЛоги в консоли Safari');
-  };
-  document.body.appendChild(logBtn);
 });
 
 window.onload = init;
