@@ -1,154 +1,373 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Учёт счетов — GitHub Pages</title>
-  <style>
-    body { font-family: Inter, Arial, sans-serif; padding:24px; background:#f7fafc; color:#111 }
-    h1 { margin-top:0 }
-    table { width:100%; border-collapse:collapse; margin-top:12px }
-    th,td { border:1px solid #e6e9ee; padding:8px; text-align:left }
-    th { background:#f1f5f9 }
-    .card { background:#fff; padding:16px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.04); margin-top:12px }
-    label{display:block;margin-top:8px}
-    input,select,button{padding:8px;margin-top:6px;width:100%;box-sizing:border-box}
-    .row{display:flex;gap:8px}
-    .row > *{flex:1}
-  </style>
+<meta charset="UTF-8">
+<title>Финансы</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+html, body {
+  margin:0; padding:0; width:100%; height:100%;
+  font-family:'JetBrains Mono', monospace;
+  background:#000; color:#fff;
+  display:flex; flex-direction:column; align-items:center;
+}
+
+/* Простой спиннер */
+#loader {
+  position:fixed; top:50%; left:50%;
+  width:20px; height:20px; background:#fff;
+  animation:pulse 1s infinite;
+  transform:translate(-50%,-50%);
+}
+@keyframes pulse { 0%,100% {opacity:0.2;} 50% {opacity:1;} }
+
+/* Скрываем основной контент до загрузки */
+#mainContent { display:none; width:100%; flex:1 1 auto; flex-direction:column; align-items:center; }
+
+/* Баланс и список */
+h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
+#totalBalance{ font-size:1rem; margin-bottom:1.6rem; text-align:center;}
+#accountsList{ width:90%; max-width:400px; flex:1 1 auto; overflow-y:auto;}
+.account{text-align:center; margin:0.5em 0;}
+.account-name{display:block; font-size:1.1rem; margin-bottom:0.15em;}
+.account-balance{ color:#ccc;}
+
+/* Блок долгов */
+#debtsSection { width:90%; max-width:400px; margin:20px 0; display:none; }
+.debt-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #333; }
+.debt-positive { color:#4CAF50; }
+.debt-negative { color:#f44336; }
+
+/* Кнопки */
+.buttons{ display:flex; flex-direction:column; gap:10px; position:fixed; bottom:20px; width:90%; max-width:400px; }
+.button-row{ display:flex; justify-content:space-around; gap:10px; }
+.btn{ background:#111; border:1px solid #333; padding:12px; border-radius:10px; cursor:pointer; flex:1; transition:0.2s; font-family:inherit; }
+.btn:hover{ background:#222; }
+.income-btn{ color:#4CAF50; }
+.expense-btn{ color:#f44336; }
+.debt-btn{ color:#fff; }
+#historyBtn{ position:fixed; top:10px; right:10px; background:transparent; border:none; color:#444; cursor:pointer; font-size:12px;}
+
+/* Модалки */
+#modal,#historyModal{
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center; z-index:999;
+}
+.modal-content{
+  background:#111; padding:20px; border-radius:12px;
+  width:95%; max-width:380px; max-height:90%; overflow-y:auto;
+  display:flex; flex-direction:column; gap:10px;
+}
+input,select{ padding:10px; border-radius:6px; border:1px solid #333; background:#000; color:#fff; font-family:inherit;}
+.modal-content button{ background:#333; color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer;}
+.modal-content button:hover{ background:#555;}
+#historyList{ font-size:0.85rem; max-height:300px; overflow-y:auto;}
+.history-item{ display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #333;}
+.delete-btn{ color:#f55; cursor:pointer; border:none; background:none; font-size:0.8rem;}
+@media(max-width:480px){ .modal-content{ max-width:95%; padding:16px; } }
+</style>
 </head>
 <body>
-  <h1>💰 Учёт счетов</h1>
 
-  <div class="card">
-    <div id="totalBalance">Загрузка...</div>
-    <table id="accountsTable">
-      <thead><tr><th>Счёт</th><th>Баланс</th></tr></thead>
-      <tbody></tbody>
-    </table>
+<div id="loader"></div>
+
+<div id="mainContent">
+  <h1>Общий баланс</h1>
+  <div id="totalBalance">—</div>
+  <div id="accountsList"></div>
+  
+  <div id="debtsSection">
+    <h2>Долги</h2>
+    <div id="debtsList"></div>
   </div>
 
-  <div class="card">
-    <h2>➕ Добавить транзакцию</h2>
-    <form id="txForm">
-      <label>Тип
-        <select id="type">
-          <option value="transfer">Перевод</option>
-          <option value="income">Доход</option>
-          <option value="expense">Расход</option>
-        </select>
-      </label>
-
-      <div class="row">
-        <label>Откуда
-          <select id="from"><option value="">—</option></select>
-        </label>
-        <label>Куда
-          <select id="to"><option value="">—</option></select>
-        </label>
-      </div>
-
-      <label>Теги
-        <input id="tags" placeholder="напр. еда, зарплата" />
-      </label>
-
-      <label>Сумма
-        <input id="amount" type="number" step="0.01" required />
-      </label>
-
-      <button type="submit">Добавить</button>
-    </form>
-    <div id="txStatus" style="margin-top:8px"></div>
+  <div class="buttons">
+    <div class="button-row">
+      <button class="btn income-btn" id="incomeBtn">Доход</button>
+      <button class="btn expense-btn" id="expenseBtn">Расход</button>
+    </div>
+    <div class="button-row">
+      <button class="btn debt-btn" id="debtGivenBtn">Взял долг</button>
+      <button class="btn debt-btn" id="debtReturnedBtn">Вернул долг</button>
+    </div>
   </div>
 
-  <script>
-    // Вставьте сюда URL вашего Apps Script Web App:
-    const GAS_WEBAPP_URL = 'GAS_WEBAPP_URL_REPLACE_ME';
+  <button id="historyBtn">История</button>
+</div>
 
-    async function apiGet(action, params = {}) {
-      const url = new URL(GAS_WEBAPP_URL);
-      url.searchParams.set('action', action);
-      for (const k in params) url.searchParams.set(k, params[k]);
-      const res = await fetch(url.toString(), { method: 'GET' });
-      return res.json();
+<div id="modal">
+  <div class="modal-content">
+    <h2 id="modalTitle">Добавить операцию</h2>
+    <select id="from"></select>
+    <select id="to"></select>
+    <select id="tags"></select>
+    <select id="counterparty"></select>
+    <input type="number" id="amount" placeholder="Сумма">
+    <button id="addBtn">Добавить</button>
+    <button onclick="closeModal()">Закрыть</button>
+  </div>
+</div>
+
+<div id="historyModal">
+  <div class="modal-content">
+    <h2>История операций</h2>
+    <div id="historyList"></div>
+    <button onclick="closeHistory()">Закрыть</button>
+  </div>
+</div>
+
+<script>
+const GAS_WEBAPP_URL='https://script.google.com/macros/s/AKfycbwV4crdlyggIYb_PoxhDOnn_SJiio_2-On1EmaXWwBpBv5ESxQ7-zZiGGGVWk8MSaj84w/exec';
+let currentType='income';
+let cache={accounts:[],tags:[],counterparties:[],transactions:[]};
+
+// Инициализация
+async function init(){
+  try{
+    const [accounts,tags,counterparties,transactions] = await Promise.all([
+      fetch(`${GAS_WEBAPP_URL}?action=getAccounts`).then(r=>r.json()),
+      fetch(`${GAS_WEBAPP_URL}?action=getTags`).then(r=>r.json()),
+      fetch(`${GAS_WEBAPP_URL}?action=getCounterparties`).then(r=>r.json()),
+      fetch(`${GAS_WEBAPP_URL}?action=getTransactions`).then(r=>r.json())
+    ]);
+    cache={accounts,tags,counterparties,transactions};
+    renderAccounts();
+    renderDebts();
+    assignButtons();
+  }catch(e){ console.error(e); }
+  document.getElementById('loader').style.display='none';
+  document.getElementById('mainContent').style.display='flex';
+}
+
+// Рендер аккаунтов
+function renderAccounts(){
+  const container=document.getElementById('accountsList');
+  container.innerHTML='';
+  let total=0;
+  cache.accounts.forEach(acc=>{
+    const balance=Number(acc.balance||0); total+=balance;
+    const div=document.createElement('div');
+    div.className='account';
+    div.innerHTML=`<span class="account-name" style="color:${acc.colour||'#fff'}">${acc.name}</span>
+                   <span class="account-balance">${balance.toFixed(2)}</span>`;
+    container.appendChild(div);
+  });
+  document.getElementById('totalBalance').textContent=total.toFixed(2);
+}
+
+// Рендер долгов
+function renderDebts(){
+  const debts = calculateDebts();
+  const container = document.getElementById('debtsList');
+  const section = document.getElementById('debtsSection');
+  
+  container.innerHTML = '';
+  
+  if (Object.keys(debts).length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  
+  section.style.display = 'block';
+  
+  Object.entries(debts).forEach(([counterparty, amount]) => {
+    if (amount !== 0) {
+      const debtItem = document.createElement('div');
+      debtItem.className = 'debt-item';
+      debtItem.innerHTML = `
+        <span>${counterparty}</span>
+        <span class="${amount > 0 ? 'debt-positive' : 'debt-negative'}">
+          ${amount > 0 ? '+' : ''}${amount.toFixed(2)}
+        </span>
+      `;
+      container.appendChild(debtItem);
     }
+  });
+}
 
-    async function apiPost(action, body = {}) {
-      const payload = { action, ...body };
-      const res = await fetch(GAS_WEBAPP_URL, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      });
-      return res.json();
-    }
-
-    async function loadAccounts() {
-      document.getElementById('totalBalance').innerText = 'Загрузка...';
-      const data = await apiGet('getAccounts');
-      if (!data) { document.getElementById('totalBalance').innerText = 'Ошибка загрузки'; return; }
-
-      // если обёртка {ok:true, ...}
-      const accounts = data.ok === false && data.error ? [] : (data.ok && data.length===undefined ? data : data);
-      // above: if your GAS returns {ok:true, ...}, adjust accordingly. We'll try best-effort.
-      let arr = accounts;
-      // Sometimes GAS returned {ok:true, result: [...]}
-      if (data.result && Array.isArray(data.result)) arr = data.result;
-      if (!Array.isArray(arr) && Array.isArray(data)) arr = data;
-
-      const tbody = document.querySelector('#accountsTable tbody');
-      tbody.innerHTML = '';
-      let total = 0;
-      arr.forEach(acc => {
-        const name = acc.name || acc['name'] || '';
-        const balance = parseFloat(acc.balance || acc['balance'] || 0) || 0;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${escapeHtml(name)}</td><td>${balance.toFixed(2)}</td>`;
-        tbody.appendChild(tr);
-        total += balance;
-      });
-
-      document.getElementById('totalBalance').innerText = `Общий баланс: ${total.toFixed(2)}`;
-
-      // заполняем селекты
-      const from = document.getElementById('from'), to = document.getElementById('to');
-      [from, to].forEach(s => { s.innerHTML = '<option value="">—</option>'; });
-      arr.forEach(acc => {
-        const name = acc.name || acc['name'] || '';
-        [from, to].forEach(s => {
-          const o = document.createElement('option'); o.value = name; o.textContent = name; s.appendChild(o);
-        });
-      });
-    }
-
-    document.getElementById('txForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const tx = {
-        type: document.getElementById('type').value,
-        from: document.getElementById('from').value,
-        to: document.getElementById('to').value,
-        tags: document.getElementById('tags').value,
-        amount: parseFloat(document.getElementById('amount').value)
-      };
-      document.getElementById('txStatus').innerText = 'Отправка...';
-      try {
-        const resp = await apiPost('addTransaction', { transaction: tx });
-        if (resp && resp.ok === false) {
-          document.getElementById('txStatus').innerText = 'Ошибка: ' + (resp.error || JSON.stringify(resp));
-        } else {
-          document.getElementById('txStatus').innerText = 'OK — транзакция добавлена';
-          document.getElementById('txForm').reset();
-          await loadAccounts();
+// Расчет долгов
+function calculateDebts(){
+  const debts = {};
+  
+  cache.transactions.forEach(tx => {
+    if (tx.Type === 'debt') {
+      const amount = parseFloat(tx.Amount);
+      
+      if (tx.From && tx.To && tx.From in debts === false && tx.To in debts === false) {
+        // Взял долг: кому дал -> отрицательный, счет -> положительный
+        if (cache.counterparties.some(c => c.type === 'debt' && c.name === tx.From)) {
+          debts[tx.From] = (debts[tx.From] || 0) - amount;
         }
-      } catch (err) {
-        document.getElementById('txStatus').innerText = 'Ошибка сети: ' + err;
+        // Вернул долг: счет -> отрицательный, кому вернул -> положительный
+        else if (cache.counterparties.some(c => c.type === 'debt' && c.name === tx.To)) {
+          debts[tx.To] = (debts[tx.To] || 0) + amount;
+        }
       }
-    });
+    }
+  });
+  
+  return debts;
+}
 
-    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];}); }
+// Заполнение выпадающих списков для разных типов операций
+function fillSelects(){
+  const {accounts,tags,counterparties}=cache;
+  const type=currentType;
+  
+  // Очищаем все селекты
+  document.getElementById('from').innerHTML = '<option value="">Откуда</option>';
+  document.getElementById('to').innerHTML = '<option value="">Куда</option>';
+  document.getElementById('tags').innerHTML = '<option value="">Тег</option>';
+  document.getElementById('counterparty').innerHTML = '<option value="">Контрагент</option>';
+  
+  // Скрываем ненужные поля
+  document.getElementById('tags').style.display = 'none';
+  document.getElementById('counterparty').style.display = 'none';
+  
+  switch(type){
+    case 'income':
+      // Доход: From - контрагенты income, To - счета
+      document.getElementById('from').innerHTML += counterparties
+        .filter(c=>c.type==='income')
+        .map(c=>`<option>${c.name}</option>`).join('');
+      document.getElementById('to').innerHTML += accounts.map(a=>`<option>${a.name}</option>`).join('');
+      document.getElementById('counterparty').style.display = 'block';
+      break;
+      
+    case 'expense':
+      // Расход: From - счета, Tags - теги expense
+      document.getElementById('from').innerHTML += accounts.map(a=>`<option>${a.name}</option>`).join('');
+      document.getElementById('tags').innerHTML += tags
+        .filter(t=>t.type==='expense')
+        .map(t=>`<option>${t.name}</option>`).join('');
+      document.getElementById('tags').style.display = 'block';
+      break;
+      
+    case 'debt_given':
+      // Взял долг: From - контрагенты debt, To - счета
+      document.getElementById('from').innerHTML += counterparties
+        .filter(c=>c.type==='debt')
+        .map(c=>`<option>${c.name}</option>`).join('');
+      document.getElementById('to').innerHTML += accounts.map(a=>`<option>${a.name}</option>`).join('');
+      document.getElementById('counterparty').style.display = 'block';
+      break;
+      
+    case 'debt_returned':
+      // Вернул долг: From - счета, To - контрагенты debt
+      document.getElementById('from').innerHTML += accounts.map(a=>`<option>${a.name}</option>`).join('');
+      document.getElementById('to').innerHTML += counterparties
+        .filter(c=>c.type==='debt')
+        .map(c=>`<option>${c.name}</option>`).join('');
+      document.getElementById('counterparty').style.display = 'block';
+      break;
+  }
+}
 
-    // init
-    loadAccounts();
-  </script>
+// Модалки
+function openModal(type){
+  currentType=type;
+  
+  // Устанавливаем заголовок модалки
+  const titles = {
+    'income': 'Добавить доход',
+    'expense': 'Добавить расход', 
+    'debt_given': 'Взял долг',
+    'debt_returned': 'Вернул долг'
+  };
+  document.getElementById('modalTitle').textContent = titles[type] || 'Добавить операцию';
+  
+  fillSelects();
+  document.getElementById('modal').style.display='flex';
+  document.getElementById('addBtn').onclick=submitTransaction;
+}
+
+function closeModal(){ 
+  document.getElementById('modal').style.display='none'; 
+  // Очищаем поля
+  document.getElementById('amount').value = '';
+}
+
+// Добавление транзакции
+async function submitTransaction(){
+  const from = document.getElementById('from').value;
+  const to = document.getElementById('to').value;
+  const tags = document.getElementById('tags').value;
+  const counterparty = document.getElementById('counterparty').value;
+  const amount = document.getElementById('amount').value;
+  
+  if (!from || !to || !amount) {
+    alert('Заполните все обязательные поля');
+    return;
+  }
+  
+  const params=new URLSearchParams({
+    action:'addTransaction',
+    type: currentType === 'debt_given' || currentType === 'debt_returned' ? 'debt' : currentType,
+    from: from,
+    to: to,
+    tags: tags,
+    counterparty: counterparty,
+    amount: amount
+  });
+  
+  await fetch(`${GAS_WEBAPP_URL}?${params.toString()}`);
+  closeModal();
+  
+  // Обновляем данные
+  const [accounts, transactions] = await Promise.all([
+    fetch(`${GAS_WEBAPP_URL}?action=getAccounts`).then(r=>r.json()),
+    fetch(`${GAS_WEBAPP_URL}?action=getTransactions`).then(r=>r.json())
+  ]);
+  cache.accounts = accounts;
+  cache.transactions = transactions;
+  
+  renderAccounts();
+  renderDebts();
+}
+
+// История
+async function openHistory(){
+  const list=await fetch(`${GAS_WEBAPP_URL}?action=getTransactions`).then(r=>r.json());
+  const div=document.getElementById('historyList');
+  div.innerHTML='';
+  list.slice(-10).reverse().forEach((tx,i)=>{
+    const item=document.createElement('div');
+    item.className='history-item';
+    item.innerHTML=`<span>${tx.Date} — ${tx.Type} — ${tx.Amount}</span>
+                    <button class="delete-btn" onclick="deleteTx(${i+2})">✕</button>`;
+    div.appendChild(item);
+  });
+  document.getElementById('historyModal').style.display='flex';
+}
+
+function closeHistory(){ document.getElementById('historyModal').style.display='none'; }
+
+async function deleteTx(index){
+  await fetch(`${GAS_WEBAPP_URL}?action=deleteTransaction&index=${index}`);
+  openHistory();
+  
+  // Обновляем данные
+  const [accounts, transactions] = await Promise.all([
+    fetch(`${GAS_WEBAPP_URL}?action=getAccounts`).then(r=>r.json()),
+    fetch(`${GAS_WEBAPP_URL}?action=getTransactions`).then(r=>r.json())
+  ]);
+  cache.accounts = accounts;
+  cache.transactions = transactions;
+  
+  renderAccounts();
+  renderDebts();
+}
+
+// Назначение обработчиков кнопок
+function assignButtons(){
+  document.getElementById('incomeBtn').onclick=()=>openModal('income');
+  document.getElementById('expenseBtn').onclick=()=>openModal('expense');
+  document.getElementById('debtGivenBtn').onclick=()=>openModal('debt_given');
+  document.getElementById('debtReturnedBtn').onclick=()=>openModal('debt_returned');
+  document.getElementById('historyBtn').onclick=openHistory;
+}
+
+window.onload=init;
+</script>
 </body>
 </html>
