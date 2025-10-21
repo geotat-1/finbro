@@ -42,7 +42,7 @@ h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:0.15em;}
 .account-balance{ color:#ccc; }
 
 /* Блок долгов */
-#debtsSection { width:90%; max-width:400px; margin:0 0 1em 0; display:none; }
+#debtsSection { width:90%; max-width:400px; margin:0 0 0.5em 0; display:none; }
 #debtsSection h2 { font-weight:400; font-size:1rem; margin-bottom:1em; text-align:center; }
 .debt-item { display:flex; justify-content:space-between; padding:1em 0; }
 .debt-positive { color:#4CAF50; }
@@ -57,7 +57,7 @@ h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:0.15em;}
 .expense-btn{ color:#f44336; }
 .debt-btn{ color:#fff; }
 .transfer-btn{ color:#fff; }
-#historyBtn{ position:fixed; top:10px; right:10px; background:transparent; border:none; color:#444; cursor:pointer; font-size:12px;}
+#historyBtn{ position:fixed; top:10px; right:10px; background:transparent; border:1px solid #333; color:#444; cursor:pointer; font-size:12px; padding:5px; z-index:1001;}
 
 /* Модалки */
 #modal,#historyModal{
@@ -517,7 +517,7 @@ async function openHistory(){
       const item = document.createElement('div');
       item.className = 'history-item';
       const formattedDate = formatISODate(tx.date) || tx.date || '';
-      item.innerHTML = `<span>${formattedDate} — ${tx.from} <span class="history-arrow">→</span> ${tx.to} — ${tx.amount || ''}</span>
+      item.innerHTML = `<span>${formattedDate} — ${tx.from} <span class="history-arrow">→</span> ${tx.to} — ${tx.amount || ''} руб.</span>
                         <button class="delete-btn" onclick="deleteTx(${i+2})">✕</button>`;
       div.appendChild(item);
     });
