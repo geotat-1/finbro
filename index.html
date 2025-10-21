@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="/finbro/apple-touch-icon.png">
 <meta charset="UTF-8">
 <title>Финансы</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,7 +29,7 @@ html, body {
 h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
 #totalBalance{ font-size:1rem; margin-bottom:1.6rem; text-align:center;}
 #accountsList{ width:90%; max-width:400px; flex:1 1 auto; overflow-y:auto;}
-.account{text-align:center; margin:0.5em 0;}
+.account{text-align:center; margin:1em 0;} /* Увеличено расстояние между блоками */
 .account-name{display:block; font-size:1.1rem; margin-bottom:0.15em;}
 .account-balance{ color:#ccc;}
 
@@ -47,6 +47,7 @@ h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
 .income-btn{ color:#4CAF50; }
 .expense-btn{ color:#f44336; }
 .debt-btn{ color:#fff; }
+.transfer-btn{ color:#fff; }
 #historyBtn{ position:fixed; top:10px; right:10px; background:transparent; border:none; color:#444; cursor:pointer; font-size:12px;}
 
 /* Модалки */
@@ -66,11 +67,37 @@ input,select{ padding:10px; border-radius:6px; border:1px solid #333; background
 .history-item{ display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #333;}
 .delete-btn{ color:#f55; cursor:pointer; border:none; background:none; font-size:0.8rem;}
 @media(max-width:480px){ .modal-content{ max-width:95%; padding:16px; } }
+
+/* Модалка для ввода URL */
+#urlModal {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.95); display:flex; align-items:center; justify-content:center; z-index:1000;
+}
+.url-modal-content {
+  background:#111; padding:30px; border-radius:12px;
+  width:90%; max-width:400px; text-align:center;
+}
+.url-modal-content h2 { margin-bottom:20px; }
+.url-modal-content input { width:100%; margin-bottom:20px; }
+.url-modal-content button { width:100%; margin:5px 0; padding:12px; background:#333; color:#fff; border:none; border-radius:8px; cursor:pointer; }
+.url-modal-content button:hover { background:#555; }
 </style>
 </head>
 <body>
 
 <div id="loader"></div>
+
+<!-- Модальное окно для ввода URL -->
+<div id="urlModal">
+  <div class="url-modal-content">
+    <h2>Введите URL вашего приложения</h2>
+    <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+    <button class="btn" onclick="saveGasUrl()">Сохранить URL</button>
+    <p style="font-size:0.8rem; color:#888; margin-top:20px;">
+      Этот URL будет сохранен в вашем браузере и больше запрашиваться не будет
+    </p>
+  </div>
+</div>
 
 <div id="mainContent">
   <h1>Общий баланс</h1>
@@ -89,6 +116,7 @@ input,select{ padding:10px; border-radius:6px; border:1px solid #333; background
     </div>
     <div class="button-row">
       <button class="btn debt-btn" id="debtGivenBtn">Взял долг</button>
+      <button class="btn transfer-btn" id="transferBtn">Перевод</button>
       <button class="btn debt-btn" id="debtReturnedBtn">Вернул долг</button>
     </div>
   </div>
@@ -99,11 +127,10 @@ input,select{ padding:10px; border-radius:6px; border:1px solid #333; background
 <div id="modal">
   <div class="modal-content">
     <h2 id="modalTitle">Добавить операцию</h2>
+    <input type="text" id="date" placeholder="Дата (дд.мм.гггг)">
     <select id="from"></select>
     <select id="to"></select>
-    <select id="tags"></select>
-    <select id="counterparty"></select>
-    <input type="number" id="amount" placeholder="Сумма">
+    <input type="number" id="amount" placeholder="Сумма" step="0.01">
     <button id="addBtn">Добавить</button>
     <button onclick="closeModal()">Закрыть</button>
   </div>
@@ -118,65 +145,168 @@ input,select{ padding:10px; border-radius:6px; border:1px solid #333; background
 </div>
 
 <script>
-const GAS_WEBAPP_URL='https://script.google.com/macros/s/AKfycbwV4crdlyggIYb_PoxhDOnn_SJiio_2-On1EmaXWwBpBv5ESxQ7-zZiGGGVWk8MSaj84w/exec';
-let currentType='income';
-let cache={accounts:[],tags:[],counterparties:[],transactions:[]};
+// Глобальная переменная для URL
+let GAS_WEBAPP_URL = null;
+let currentType = 'income';
+let cache = {accounts:[], counterparties:[], debts:[], transactions:[]};
 
-// Инициализация
-async function init(){
-  try{
-    const [accounts,tags,counterparties,transactions] = await Promise.all([
-      fetch(`${GAS_WEBAPP_URL}?action=getAccounts`).then(r=>r.json()),
-      fetch(`${GAS_WEBAPP_URL}?action=getTags`).then(r=>r.json()),
-      fetch(`${GAS_WEBAPP_URL}?action=getCounterparties`).then(r=>r.json()),
-      fetch(`${GAS_WEBAPP_URL}?action=getTransactions`).then(r=>r.json())
+// Функция для сохранения URL
+function saveGasUrl() {
+  const urlInput = document.getElementById('gasUrlInput').value.trim();
+  
+  if (!urlInput) {
+    alert('Пожалуйста, введите URL');
+    return;
+  }
+  
+  // Проверяем базовый формат URL
+  if (!urlInput.startsWith('https://')) {
+    alert('URL должен начинаться с https://');
+    return;
+  }
+  
+  // Сохраняем URL в localStorage
+  localStorage.setItem('GAS_WEBAPP_URL', urlInput);
+  GAS_WEBAPP_URL = urlInput;
+  
+  // Скрываем модалку URL и инициализируем приложение
+  document.getElementById('urlModal').style.display = 'none';
+  document.getElementById('loader').style.display = 'block';
+  initApp();
+}
+
+// Функция для сброса URL (на случай ошибок)
+function resetGasUrl() {
+  localStorage.removeItem('GAS_WEBAPP_URL');
+  GAS_WEBAPP_URL = null;
+  document.getElementById('urlModal').style.display = 'flex';
+  document.getElementById('mainContent').style.display = 'none';
+  document.getElementById('loader').style.display = 'none';
+}
+
+// Альтернативный подход с повторными попытками
+async function fetchWithRetry(url, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url);
+      
+      if (response.ok) {
+        const text = await response.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          return text;
+        }
+      }
+    } catch (error) {
+      console.warn(`Attempt ${i + 1} failed:`, error);
+      if (i === retries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
+  }
+}
+
+// Инициализация приложения
+async function initApp() {
+  try {
+    console.log('Starting app initialization with URL:', GAS_WEBAPP_URL);
+    
+    const [accounts, counterparties, debts, transactions] = await Promise.all([
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getAccounts&timestamp=${Date.now()}`),
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getCounterparties&timestamp=${Date.now()}`),
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getDebts&timestamp=${Date.now()}`),
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getTransactions&timestamp=${Date.now()}`)
     ]);
-    cache={accounts,tags,counterparties,transactions};
+    
+    console.log('Loaded data:', { accounts, counterparties, debts, transactions });
+    
+    // Проверяем, что данные загружены корректно
+    if (!accounts || !counterparties) {
+      throw new Error('Не все данные были загружены');
+    }
+    
+    cache = {accounts, counterparties, debts: debts || [], transactions: transactions || []};
     renderAccounts();
     renderDebts();
     assignButtons();
-  }catch(e){ console.error(e); }
-  document.getElementById('loader').style.display='none';
-  document.getElementById('mainContent').style.display='flex';
+    
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'flex';
+    
+  } catch (error) {
+    console.error('Ошибка загрузки данных:', error);
+    
+    let errorMessage = 'Ошибка загрузки данных. ';
+    
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      errorMessage += 'Проблема с сетью или CORS. Убедитесь, что:\n\n';
+      errorMessage += '1. Ваш Google Apps Script развернут как веб-приложение\n';
+      errorMessage += '2. В настройках доступа указано "Все пользователи, включая анонимных"\n';
+      errorMessage += '3. Вы используете правильный URL развертывания';
+    } else {
+      errorMessage += error.message;
+    }
+    
+    alert(errorMessage);
+    resetGasUrl();
+  }
+}
+
+// Основная инициализация при загрузке страницы
+function init() {
+  // Пытаемся получить URL из localStorage
+  GAS_WEBAPP_URL = localStorage.getItem('GAS_WEBAPP_URL');
+  
+  if (GAS_WEBAPP_URL) {
+    // Если URL есть, сразу запускаем приложение
+    document.getElementById('urlModal').style.display = 'none';
+    document.getElementById('loader').style.display = 'block';
+    initApp();
+  } else {
+    // Если URL нет, показываем модалку для ввода
+    document.getElementById('urlModal').style.display = 'flex';
+    document.getElementById('loader').style.display = 'none';
+  }
 }
 
 // Рендер аккаунтов
 function renderAccounts(){
-  const container=document.getElementById('accountsList');
-  container.innerHTML='';
-  let total=0;
-  cache.accounts.forEach(acc=>{
-    const balance=Number(acc.balance||0); total+=balance;
-    const div=document.createElement('div');
-    div.className='account';
-    div.innerHTML=`<span class="account-name" style="color:${acc.colour||'#fff'}">${acc.name}</span>
-                   <span class="account-balance">${balance.toFixed(2)}</span>`;
+  const container = document.getElementById('accountsList');
+  container.innerHTML = '';
+  let total = 0;
+  cache.accounts.forEach(acc => {
+    const balance = Number(acc.balance || 0); 
+    total += balance;
+    const div = document.createElement('div');
+    div.className = 'account';
+    div.innerHTML = `<span class="account-name" style="color:${acc.colour||'#fff'}">${acc.name}</span>
+                     <span class="account-balance">${balance.toFixed(2)}</span>`;
     container.appendChild(div);
   });
-  document.getElementById('totalBalance').textContent=total.toFixed(2);
+  document.getElementById('totalBalance').textContent = total.toFixed(2);
 }
 
 // Рендер долгов
 function renderDebts(){
-  const debts = calculateDebts();
   const container = document.getElementById('debtsList');
   const section = document.getElementById('debtsSection');
   
   container.innerHTML = '';
   
-  if (Object.keys(debts).length === 0) {
+  if (!cache.debts || cache.debts.length === 0) {
     section.style.display = 'none';
     return;
   }
   
   section.style.display = 'block';
   
-  Object.entries(debts).forEach(([counterparty, amount]) => {
+  cache.debts.forEach(debt => {
+    const amount = Number(debt.balance || 0);
     if (amount !== 0) {
       const debtItem = document.createElement('div');
       debtItem.className = 'debt-item';
       debtItem.innerHTML = `
-        <span>${counterparty}</span>
+        <span>${debt.name || 'Неизвестно'}</span>
         <span class="${amount > 0 ? 'debt-positive' : 'debt-negative'}">
           ${amount > 0 ? '+' : ''}${amount.toFixed(2)}
         </span>
@@ -186,189 +316,220 @@ function renderDebts(){
   });
 }
 
-// Расчет долгов
-function calculateDebts(){
-  const debts = {};
-  
-  cache.transactions.forEach(tx => {
-    if (tx.Type === 'debt') {
-      const amount = parseFloat(tx.Amount);
-      
-      if (tx.From && tx.To && tx.From in debts === false && tx.To in debts === false) {
-        // Взял долг: кому дал -> отрицательный, счет -> положительный
-        if (cache.counterparties.some(c => c.type === 'debt' && c.name === tx.From)) {
-          debts[tx.From] = (debts[tx.From] || 0) - amount;
-        }
-        // Вернул долг: счет -> отрицательный, кому вернул -> положительный
-        else if (cache.counterparties.some(c => c.type === 'debt' && c.name === tx.To)) {
-          debts[tx.To] = (debts[tx.To] || 0) + amount;
-        }
-      }
-    }
-  });
-  
-  return debts;
+// Форматирование даты в формате дд.мм.гггг
+function formatDate(date = new Date()) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}.${month}.${year}`;
 }
 
 // Заполнение выпадающих списков для разных типов операций
 function fillSelects(){
-  const {accounts,tags,counterparties}=cache;
-  const type=currentType;
+  const {accounts, counterparties, debts} = cache;
   
   // Очищаем все селекты
-  document.getElementById('from').innerHTML = '<option value="">Откуда</option>';
-  document.getElementById('to').innerHTML = '<option value="">Куда</option>';
-  document.getElementById('tags').innerHTML = '<option value="">Тег</option>';
-  document.getElementById('counterparty').innerHTML = '<option value="">Контрагент</option>';
+  document.getElementById('from').innerHTML = '<option value="">Выберите...</option>';
+  document.getElementById('to').innerHTML = '<option value="">Выберите...</option>';
   
-  // Скрываем ненужные поля
-  document.getElementById('tags').style.display = 'none';
-  document.getElementById('counterparty').style.display = 'none';
+  // Устанавливаем текущую дату по умолчанию
+  document.getElementById('date').value = formatDate();
   
-  switch(type){
+  switch(currentType){
     case 'income':
       // Доход: From - контрагенты income, To - счета
       document.getElementById('from').innerHTML += counterparties
-        .filter(c=>c.type==='income')
-        .map(c=>`<option>${c.name}</option>`).join('');
-      document.getElementById('to').innerHTML += accounts.map(a=>`<option>${a.name}</option>`).join('');
-      document.getElementById('counterparty').style.display = 'block';
+        .filter(c => c.type === 'income')
+        .map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      document.getElementById('to').innerHTML += accounts
+        .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
       break;
       
     case 'expense':
-      // Расход: From - счета, Tags - теги expense
-      document.getElementById('from').innerHTML += accounts.map(a=>`<option>${a.name}</option>`).join('');
-      document.getElementById('tags').innerHTML += tags
-        .filter(t=>t.type==='expense')
-        .map(t=>`<option>${t.name}</option>`).join('');
-      document.getElementById('tags').style.display = 'block';
-      break;
-      
-    case 'debt_given':
-      // Взял долг: From - контрагенты debt, To - счета
-      document.getElementById('from').innerHTML += counterparties
-        .filter(c=>c.type==='debt')
-        .map(c=>`<option>${c.name}</option>`).join('');
-      document.getElementById('to').innerHTML += accounts.map(a=>`<option>${a.name}</option>`).join('');
-      document.getElementById('counterparty').style.display = 'block';
-      break;
-      
-    case 'debt_returned':
-      // Вернул долг: From - счета, To - контрагенты debt
-      document.getElementById('from').innerHTML += accounts.map(a=>`<option>${a.name}</option>`).join('');
+      // Расход: From - счета, To - контрагенты expense
+      document.getElementById('from').innerHTML += accounts
+        .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
       document.getElementById('to').innerHTML += counterparties
-        .filter(c=>c.type==='debt')
-        .map(c=>`<option>${c.name}</option>`).join('');
-      document.getElementById('counterparty').style.display = 'block';
+        .filter(c => c.type === 'expense')
+        .map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      break;
+
+    case 'debt_given':
+    // Взял долг: From - должники из debts, To - счета
+        document.getElementById('from').innerHTML += cache.debts
+        .map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+        document.getElementById('to').innerHTML += accounts
+        .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
+        break;
+
+    case 'debt_returned':
+    // Вернул долг: From - счета, To - должники из debts
+        document.getElementById('from').innerHTML += accounts
+        .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
+     document.getElementById('to').innerHTML += cache.debts
+        .map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+        break;
+
+    case 'transfer':
+      // Перевод: From - счета, To - счета
+      document.getElementById('from').innerHTML += accounts
+        .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
+      document.getElementById('to').innerHTML += accounts
+        .map(a => `<option value="${a.name}">${a.name}</option>`).join('');
       break;
   }
 }
 
 // Модалки
 function openModal(type){
-  currentType=type;
+  currentType = type;
   
   // Устанавливаем заголовок модалки
   const titles = {
     'income': 'Добавить доход',
     'expense': 'Добавить расход', 
     'debt_given': 'Взял долг',
+    'transfer': 'Перевод между счетами',
     'debt_returned': 'Вернул долг'
   };
   document.getElementById('modalTitle').textContent = titles[type] || 'Добавить операцию';
   
   fillSelects();
-  document.getElementById('modal').style.display='flex';
-  document.getElementById('addBtn').onclick=submitTransaction;
+  document.getElementById('modal').style.display = 'flex';
+  document.getElementById('addBtn').onclick = submitTransaction;
 }
 
 function closeModal(){ 
-  document.getElementById('modal').style.display='none'; 
+  document.getElementById('modal').style.display = 'none'; 
   // Очищаем поля
+  document.getElementById('date').value = '';
   document.getElementById('amount').value = '';
+}
+
+// Форматирование суммы в формат 1234,00
+function formatAmount(amount) {
+  return parseFloat(amount).toFixed(2).replace('.', ',');
 }
 
 // Добавление транзакции
 async function submitTransaction(){
+  const date = document.getElementById('date').value;
   const from = document.getElementById('from').value;
   const to = document.getElementById('to').value;
-  const tags = document.getElementById('tags').value;
-  const counterparty = document.getElementById('counterparty').value;
-  const amount = document.getElementById('amount').value;
+  const amountInput = document.getElementById('amount').value;
   
-  if (!from || !to || !amount) {
+  if (!date || !from || !to || !amountInput) {
     alert('Заполните все обязательные поля');
     return;
   }
   
-  const params=new URLSearchParams({
-    action:'addTransaction',
-    type: currentType === 'debt_given' || currentType === 'debt_returned' ? 'debt' : currentType,
+  // Проверяем формат даты
+  const dateRegex = /^\d{2}\.\d{2}\.\d{4}$/;
+  if (!dateRegex.test(date)) {
+    alert('Дата должна быть в формате дд.мм.гггг');
+    return;
+  }
+  
+  // Все суммы записываются с плюсом
+  const amount = Math.abs(parseFloat(amountInput));
+  const formattedAmount = formatAmount(amount);
+  
+  // Отправляем данные в правильном формате для таблицы
+  const params = new URLSearchParams({
+    action: 'addTransaction',
+    date: date,
     from: from,
     to: to,
-    tags: tags,
-    counterparty: counterparty,
-    amount: amount
+    amount: formattedAmount
   });
   
-  await fetch(`${GAS_WEBAPP_URL}?${params.toString()}`);
-  closeModal();
-  
-  // Обновляем данные
-  const [accounts, transactions] = await Promise.all([
-    fetch(`${GAS_WEBAPP_URL}?action=getAccounts`).then(r=>r.json()),
-    fetch(`${GAS_WEBAPP_URL}?action=getTransactions`).then(r=>r.json())
-  ]);
-  cache.accounts = accounts;
-  cache.transactions = transactions;
-  
-  renderAccounts();
-  renderDebts();
+  try {
+    const url = `${GAS_WEBAPP_URL}?${params.toString()}`;
+    await fetchWithRetry(url);
+    closeModal();
+    
+    // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ ПОСЛЕ ДОБАВЛЕНИЯ ОПЕРАЦИИ
+    await reloadAllData();
+    
+  } catch (error) {
+    console.error('Ошибка при добавлении транзакции:', error);
+    alert('Ошибка при добавлении транзакции: ' + error.message);
+  }
+}
+
+// Функция для перезагрузки всех данных
+async function reloadAllData() {
+  try {
+    const [accounts, debts, transactions] = await Promise.all([
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getAccounts&timestamp=${Date.now()}`),
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getDebts&timestamp=${Date.now()}`),
+      fetchWithRetry(`${GAS_WEBAPP_URL}?action=getTransactions&timestamp=${Date.now()}`)
+    ]);
+    
+    cache.accounts = accounts;
+    cache.debts = debts || [];
+    cache.transactions = transactions || [];
+    
+    renderAccounts();
+    renderDebts();
+    
+  } catch (error) {
+    console.error('Ошибка при обновлении данных:', error);
+    alert('Ошибка при обновлении данных');
+  }
 }
 
 // История
 async function openHistory(){
-  const list=await fetch(`${GAS_WEBAPP_URL}?action=getTransactions`).then(r=>r.json());
-  const div=document.getElementById('historyList');
-  div.innerHTML='';
-  list.slice(-10).reverse().forEach((tx,i)=>{
-    const item=document.createElement('div');
-    item.className='history-item';
-    item.innerHTML=`<span>${tx.Date} — ${tx.Type} — ${tx.Amount}</span>
-                    <button class="delete-btn" onclick="deleteTx(${i+2})">✕</button>`;
-    div.appendChild(item);
-  });
-  document.getElementById('historyModal').style.display='flex';
+  const list = await fetchWithRetry(`${GAS_WEBAPP_URL}?action=getTransactions&timestamp=${Date.now()}`);
+  const div = document.getElementById('historyList');
+  div.innerHTML = '';
+  
+  if (list && list.length > 0) {
+    list.slice(-10).reverse().forEach((tx, i) => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `<span>${tx.date} — ${tx.from} → ${tx.to} — ${tx.amount}</span>
+                        <button class="delete-btn" onclick="deleteTx(${i+2})">✕</button>`;
+      div.appendChild(item);
+    });
+  }
+  
+  document.getElementById('historyModal').style.display = 'flex';
 }
 
-function closeHistory(){ document.getElementById('historyModal').style.display='none'; }
+function closeHistory(){ 
+  document.getElementById('historyModal').style.display = 'none'; 
+}
 
 async function deleteTx(index){
-  await fetch(`${GAS_WEBAPP_URL}?action=deleteTransaction&index=${index}`);
+  await fetchWithRetry(`${GAS_WEBAPP_URL}?action=deleteTransaction&index=${index}`);
   openHistory();
   
-  // Обновляем данные
-  const [accounts, transactions] = await Promise.all([
-    fetch(`${GAS_WEBAPP_URL}?action=getAccounts`).then(r=>r.json()),
-    fetch(`${GAS_WEBAPP_URL}?action=getTransactions`).then(r=>r.json())
-  ]);
-  cache.accounts = accounts;
-  cache.transactions = transactions;
-  
-  renderAccounts();
-  renderDebts();
+  // ОБНОВЛЯЕМ ДАННЫЕ ПОСЛЕ УДАЛЕНИЯ
+  await reloadAllData();
 }
 
 // Назначение обработчиков кнопок
 function assignButtons(){
-  document.getElementById('incomeBtn').onclick=()=>openModal('income');
-  document.getElementById('expenseBtn').onclick=()=>openModal('expense');
-  document.getElementById('debtGivenBtn').onclick=()=>openModal('debt_given');
-  document.getElementById('debtReturnedBtn').onclick=()=>openModal('debt_returned');
-  document.getElementById('historyBtn').onclick=openHistory;
+  document.getElementById('incomeBtn').onclick = () => openModal('income');
+  document.getElementById('expenseBtn').onclick = () => openModal('expense');
+  document.getElementById('debtGivenBtn').onclick = () => openModal('debt_given');
+  document.getElementById('transferBtn').onclick = () => openModal('transfer');
+  document.getElementById('debtReturnedBtn').onclick = () => openModal('debt_returned');
+  document.getElementById('historyBtn').onclick = openHistory;
 }
 
-window.onload=init;
+// Добавляем кнопку сброса URL в историю (для отладки)
+document.addEventListener('DOMContentLoaded', function() {
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = 'Сброс URL';
+  resetBtn.style = 'position:fixed; top:10px; left:10px; background:transparent; border:1px solid #333; color:#444; cursor:pointer; font-size:12px; padding:5px; z-index:1001;';
+  resetBtn.onclick = resetGasUrl;
+  document.body.appendChild(resetBtn);
+});
+
+window.onload = init;
 </script>
 </body>
 </html>
