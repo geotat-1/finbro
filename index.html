@@ -207,10 +207,38 @@ async function fetchWithRetry(url, retries = 3) {
 }
 
 // Инициализация приложения
+// Инициализация приложения
 async function initApp() {
   try {
     console.log('Starting app initialization with URL:', GAS_WEBAPP_URL);
     
+    // Тестовый запрос для диагностики
+    const testUrl = `${GAS_WEBAPP_URL}?action=getAccounts&timestamp=${Date.now()}`;
+    console.log('Testing URL:', testUrl);
+    
+    // Делаем тестовый запрос с подробным логированием
+    const testResponse = await fetch(testUrl);
+    console.log('Test response status:', testResponse.status);
+    console.log('Test response ok:', testResponse.ok);
+    console.log('Test response headers:', [...testResponse.headers].map(h => h.join(': ')));
+    
+    if (!testResponse.ok) {
+      throw new Error(`HTTP error! status: ${testResponse.status}`);
+    }
+    
+    const testText = await testResponse.text();
+    console.log('Test response text:', testText);
+    
+    let testData;
+    try {
+      testData = JSON.parse(testText);
+      console.log('Test JSON parsed successfully:', testData);
+    } catch (e) {
+      console.error('Failed to parse test response as JSON:', e);
+      throw new Error('Response is not valid JSON');
+    }
+    
+    // Если тест прошел успешно, загружаем все данные
     const [accounts, counterparties, debts, transactions] = await Promise.all([
       fetchWithRetry(`${GAS_WEBAPP_URL}?action=getAccounts&timestamp=${Date.now()}`),
       fetchWithRetry(`${GAS_WEBAPP_URL}?action=getCounterparties&timestamp=${Date.now()}`),
@@ -218,14 +246,20 @@ async function initApp() {
       fetchWithRetry(`${GAS_WEBAPP_URL}?action=getTransactions&timestamp=${Date.now()}`)
     ]);
     
-    console.log('Loaded data:', { accounts, counterparties, debts, transactions });
+    console.log('All data loaded successfully:', { 
+      accounts: accounts?.length, 
+      counterparties: counterparties?.length,
+      debts: debts?.length,
+      transactions: transactions?.length
+    });
     
-    // Проверяем, что данные загружены корректно
-    if (!accounts || !counterparties) {
-      throw new Error('Не все данные были загружены');
-    }
+    cache = {
+      accounts: accounts || [], 
+      counterparties: counterparties || [], 
+      debts: debts || [], 
+      transactions: transactions || []
+    };
     
-    cache = {accounts, counterparties, debts: debts || [], transactions: transactions || []};
     renderAccounts();
     renderDebts();
     assignButtons();
@@ -234,15 +268,26 @@ async function initApp() {
     document.getElementById('mainContent').style.display = 'flex';
     
   } catch (error) {
-    console.error('Ошибка загрузки данных:', error);
+    console.error('Full error details:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     
-    let errorMessage = 'Ошибка загрузки данных. ';
+    let errorMessage = 'Ошибка загрузки данных. \n\n';
     
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      errorMessage += 'Проблема с сетью или CORS. Убедитесь, что:\n\n';
-      errorMessage += '1. Ваш Google Apps Script развернут как веб-приложение\n';
-      errorMessage += '2. В настройках доступа указано "Все пользователи, включая анонимных"\n';
-      errorMessage += '3. Вы используете правильный URL развертывания';
+    if (error.message.includes('Failed to fetch') || error.message.includes('Load failed')) {
+      errorMessage += 'Проблема с CORS или сетью. Убедитесь, что:\n\n';
+      errorMessage += '✅ Google Apps Script развернут как веб-приложение\n';
+      errorMessage += '✅ В настройках доступа: "Все пользователи, включая анонимных"\n';
+      errorMessage += '✅ Вы используете URL из развертывания (не редактора)\n\n';
+      errorMessage += 'Если проблема сохраняется, попробуйте:\n';
+      errorMessage += '1. Очистить историю браузера\n';
+      errorMessage += '2. Перезагрузить страницу\n';
+      errorMessage += '3. Проверить URL на другом устройстве';
+    } else if (error.message.includes('HTTP error')) {
+      errorMessage += `Ошибка сервера: ${error.message}`;
+    } else if (error.message.includes('valid JSON')) {
+      errorMessage += 'Сервер вернул невалидный JSON. Проверьте настройки GAS.';
     } else {
       errorMessage += error.message;
     }
@@ -527,6 +572,20 @@ document.addEventListener('DOMContentLoaded', function() {
   resetBtn.style = 'position:fixed; top:10px; left:10px; background:transparent; border:1px solid #333; color:#444; cursor:pointer; font-size:12px; padding:5px; z-index:1001;';
   resetBtn.onclick = resetGasUrl;
   document.body.appendChild(resetBtn);
+});
+
+// Добавляем кнопку для просмотра логов (для отладки)
+document.addEventListener('DOMContentLoaded', function() {
+  const logBtn = document.createElement('button');
+  logBtn.textContent = 'Показать логи';
+  logBtn.style = 'position:fixed; top:40px; left:10px; background:transparent; border:1px solid #333; color:#444; cursor:pointer; font-size:12px; padding:5px; z-index:1001;';
+  logBtn.onclick = () => {
+    const logs = [...document.querySelectorAll('script')]
+      .map(s => s.src || s.innerHTML)
+      .filter(s => s.includes('google') || s.includes('script'));
+    alert('Текущий URL: ' + GAS_WEBAPP_URL + '\n\nЛоги в консоли Safari');
+  };
+  document.body.appendChild(logBtn);
 });
 
 window.onload = init;
