@@ -5,7 +5,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Финансы">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta charset="UTF-8">
 <title>Финансы</title>
 <style>
@@ -14,6 +15,10 @@ html, body {
   font-family:'JetBrains Mono', monospace;
   background:#000; color:#fff;
   display:flex; flex-direction:column; align-items:center;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Простой спиннер */
@@ -29,24 +34,24 @@ html, body {
 #mainContent { display:none; width:100%; flex:1 1 auto; flex-direction:column; align-items:center; }
 
 /* Баланс и список */
-h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
+h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:0.15em;}
 #totalBalance{ font-size:1rem; margin-bottom:1.6rem; text-align:center;}
 #accountsList{ width:90%; max-width:400px; flex:1 1 auto; overflow-y:auto;}
-.account{text-align:center; margin:1em 0;}
-.account-name{display:block; font-size:1.1rem; margin-bottom:0.15em;}
-.account-balance{ color:#ccc;}
+.account{ display:flex; justify-content:space-between; padding:1em 0; }
+.account-name{ font-size:1.1rem; }
+.account-balance{ color:#ccc; }
 
 /* Блок долгов */
-#debtsSection { width:90%; max-width:400px; margin:1em 0; display:none; text-align:center; }
-#debtsSection h2 { font-weight:400; font-size:1rem; margin-bottom:1em; }
-.debt-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #333; }
+#debtsSection { width:90%; max-width:400px; margin:0 0 1em 0; display:none; }
+#debtsSection h2 { font-weight:400; font-size:1rem; margin-bottom:1em; text-align:center; }
+.debt-item { display:flex; justify-content:space-between; padding:1em 0; }
 .debt-positive { color:#4CAF50; }
 .debt-negative { color:#f44336; }
 
 /* Кнопки */
 .buttons{ display:flex; flex-direction:column; gap:10px; position:fixed; bottom:20px; width:90%; max-width:400px; }
 .button-row{ display:flex; justify-content:space-around; gap:10px; }
-.btn{ background:#111; border:1px solid #333; padding:12px; border-radius:10px; cursor:pointer; flex:1; transition:0.2s; font-family:inherit; }
+.btn{ background:#111; border:1px solid #333; padding:12px; border-radius:10px; cursor:pointer; flex:1; transition:0.2s; font-family:inherit; font-size:16px; }
 .btn:hover{ background:#222; }
 .income-btn{ color:#4CAF50; }
 .expense-btn{ color:#f44336; }
@@ -64,13 +69,36 @@ h1{ font-weight:400; font-size:1rem; margin-top:30px; margin-bottom:20px;}
   width:95%; max-width:380px; max-height:90%; overflow-y:auto;
   display:flex; flex-direction:column; gap:10px;
 }
-input,select{ padding:10px; border-radius:6px; border:1px solid #333; background:#000; color:#fff; font-family:inherit;}
-.modal-content button{ background:#333; color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer;}
+input,select{ 
+  padding:12px; 
+  border-radius:6px; 
+  border:1px solid #333; 
+  background:#000; 
+  color:#fff; 
+  font-family:inherit; 
+  font-size:16px; 
+  height:44px;
+  box-sizing:border-box;
+}
+input[type="number"] {
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+.modal-content button{ 
+  background:#333; 
+  color:#fff; 
+  border:none; 
+  padding:12px; 
+  border-radius:8px; 
+  cursor:pointer; 
+  font-size:16px; 
+  height:44px;
+}
 .modal-content button:hover{ background:#555;}
 #historyList{ font-size:0.85rem; max-height:300px; overflow-y:auto;}
-.history-item{ display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #333;}
+.history-item{ display:flex; justify-content:space-between; padding:8px 0; }
+.history-arrow { margin:0 5px; }
 .delete-btn{ color:#f55; cursor:pointer; border:none; background:none; font-size:0.8rem;}
-@media(max-width:480px){ .modal-content{ max-width:95%; padding:16px; } }
 
 /* Модалка для ввода URL */
 #urlModal {
@@ -82,9 +110,25 @@ input,select{ padding:10px; border-radius:6px; border:1px solid #333; background
   width:90%; max-width:400px; text-align:center;
 }
 .url-modal-content h2 { margin-bottom:20px; }
-.url-modal-content input { width:100%; margin-bottom:20px; }
-.url-modal-content button { width:100%; margin:5px 0; padding:12px; background:#333; color:#fff; border:none; border-radius:8px; cursor:pointer; }
-.url-modal-content button:hover { background:#555; }
+.url-modal-content input { 
+  width:100%; 
+  margin-bottom:20px; 
+  font-size:16px; 
+  padding:12px;
+  height:44px;
+}
+.url-modal-content button { 
+  width:100%; 
+  margin:5px 0; 
+  padding:12px; 
+  background:#333; 
+  color:#fff; 
+  border:none; 
+  border-radius:8px; 
+  cursor:pointer; 
+  font-size:16px; 
+  height:44px;
+}
 </style>
 </head>
 <body>
@@ -134,7 +178,7 @@ input,select{ padding:10px; border-radius:6px; border:1px solid #333; background
     <input type="text" id="date" placeholder="Дата (дд.мм.гггг)">
     <select id="from"></select>
     <select id="to"></select>
-    <input type="number" id="amount" placeholder="Сумма" step="0.01">
+    <input type="number" id="amount" placeholder="Сумма" step="0.01" pattern="[0-9]*" inputmode="numeric">
     <button id="addBtn">Добавить</button>
     <button onclick="closeModal()">Закрыть</button>
   </div>
@@ -179,13 +223,9 @@ function saveGasUrl() {
   initApp();
 }
 
-// Функция для сброса URL (на случай ошибок)
-function resetGasUrl() {
-  localStorage.removeItem('GAS_WEBAPP_URL');
-  GAS_WEBAPP_URL = null;
-  document.getElementById('urlModal').style.display = 'flex';
-  document.getElementById('mainContent').style.display = 'none';
-  document.getElementById('loader').style.display = 'none';
+// Функция для обновления страницы
+function refreshPage() {
+  location.reload();
 }
 
 // Простая функция fetch с повторными попытками
@@ -225,7 +265,9 @@ async function initApp() {
   } catch (error) {
     console.error('Ошибка загрузки данных:', error);
     alert('Ошибка загрузки данных. Проверьте URL и настройки GAS.');
-    resetGasUrl();
+    document.getElementById('urlModal').style.display = 'flex';
+    document.getElementById('mainContent').style.display = 'none';
+    document.getElementById('loader').style.display = 'none';
   }
 }
 
@@ -299,6 +341,13 @@ function formatDate(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   return `${day}.${month}.${year}`;
+}
+
+// Форматирование даты из ISO формата
+function formatISODate(isoDate) {
+  if (!isoDate) return '';
+  const date = new Date(isoDate);
+  return formatDate(date);
 }
 
 // Заполнение выпадающих списков для разных типов операций
@@ -463,10 +512,12 @@ async function openHistory(){
   div.innerHTML = '';
   
   if (list && list.length > 0) {
-    list.slice(-10).reverse().forEach((tx, i) => {
+    // Сортируем от новых к старым
+    list.forEach((tx, i) => {
       const item = document.createElement('div');
       item.className = 'history-item';
-      item.innerHTML = `<span>${tx.date} — ${tx.from} → ${tx.to} — ${tx.amount}</span>
+      const formattedDate = formatISODate(tx.date) || tx.date || '';
+      item.innerHTML = `<span>${formattedDate} — ${tx.from} <span class="history-arrow">→</span> ${tx.to} — ${tx.amount || ''}</span>
                         <button class="delete-btn" onclick="deleteTx(${i+2})">✕</button>`;
       div.appendChild(item);
     });
@@ -497,13 +548,13 @@ function assignButtons(){
   document.getElementById('historyBtn').onclick = openHistory;
 }
 
-// Добавляем кнопку сброса URL в историю (для отладки)
+// Добавляем кнопку обновления страницы
 document.addEventListener('DOMContentLoaded', function() {
-  const resetBtn = document.createElement('button');
-  resetBtn.textContent = 'Сброс URL';
-  resetBtn.style = 'position:fixed; top:10px; left:10px; background:transparent; border:1px solid #333; color:#444; cursor:pointer; font-size:12px; padding:5px; z-index:1001;';
-  resetBtn.onclick = resetGasUrl;
-  document.body.appendChild(resetBtn);
+  const refreshBtn = document.createElement('button');
+  refreshBtn.textContent = 'Обновить';
+  refreshBtn.style = 'position:fixed; top:10px; left:10px; background:transparent; border:1px solid #333; color:#444; cursor:pointer; font-size:12px; padding:5px; z-index:1001;';
+  refreshBtn.onclick = refreshPage;
+  document.body.appendChild(refreshBtn);
 });
 
 window.onload = init;
