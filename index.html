@@ -511,24 +511,25 @@ async function reloadAllData() {
   }
 }
 
-// История
-async function openHistory(){
+// История  
+async function openHistory() {
   const list = await fetchWithRetry(`${GAS_WEBAPP_URL}?action=getTransactions&timestamp=${Date.now()}`);
   const div = document.getElementById('historyList');
   div.innerHTML = '';
-  
+
   if (list && list.length > 0) {
-    // Сортируем от новых к старым
-    list.forEach((tx, i) => {
-      const item = document.createElement('div');
-      item.className = 'history-item';
+    list.forEach(tx => {
       const formattedDate = formatISODate(tx.date) || tx.date || '';
-      item.innerHTML = `<span>${formattedDate} — ${tx.from} <span class="history-arrow">→</span> ${tx.to} — ${tx.amount || ''} руб.</span>
-                        <button class="delete-btn" onclick="deleteTx(${i+2})">✕</button>`;
-      div.appendChild(item);
+      div.innerHTML += `
+        <div class="history-item">
+          <span>${formattedDate} — ${tx.from} → ${tx.to} — ${tx.amount || ''} руб.</span>
+          <button class="delete-btn" onclick="deleteTx('${tx.id}')">✕</button>
+        </div>`;
     });
+  } else {
+    div.innerHTML = '<p>Нет операций</p>';
   }
-  
+
   document.getElementById('historyModal').style.display = 'flex';
 }
 
@@ -536,13 +537,16 @@ function closeHistory(){
   document.getElementById('historyModal').style.display = 'none'; 
 }
 
-async function deleteTx(index){
-  await fetchWithRetry(`${GAS_WEBAPP_URL}?action=deleteTransaction&index=${index}`);
-  openHistory();
-  
-  // ОБНОВЛЯЕМ ДАННЫЕ ПОСЛЕ УДАЛЕНИЯ
-  await reloadAllData();
+async function deleteTx(id){
+  try {
+    await fetchWithRetry(`${GAS_WEBAPP_URL}?action=deleteTransaction&id=${id}`);
+    await openHistory();
+    await reloadAllData();
+  } catch (error) {
+    alert("Ошибка при удалении: " + error.message);
+  }
 }
+
 
 // Назначение обработчиков кнопок
 function assignButtons(){
