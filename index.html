@@ -523,7 +523,7 @@ async function openHistory() {
       div.innerHTML += `
         <div class="history-item">
           <span>${formattedDate} — ${tx.from} → ${tx.to} — ${tx.amount || ''} руб.</span>
-          <button class="delete-btn" onclick="deleteTx('${tx.id}')">✕</button>
+          <button class="delete-btn" onclick="deleteTx('${tx.transaction_id}')">✕</button>
         </div>`;
     });
   } else {
@@ -537,19 +537,15 @@ function closeHistory(){
   document.getElementById('historyModal').style.display = 'none'; 
 }
 
-async function deleteTx(id) {
-  console.log("deleteTx вызвана с id:", id);
+async function deleteTx(id){
   try {
     await fetchWithRetry(`${GAS_WEBAPP_URL}?action=deleteTransaction&id=${id}`);
-    console.log("Запрос отправлен, обновляем историю...");
     await openHistory();
     await reloadAllData();
   } catch (error) {
     alert("Ошибка при удалении: " + error.message);
   }
 }
-
-
 
 // Назначение обработчиков кнопок
 function assignButtons(){
