@@ -537,15 +537,18 @@ function closeHistory(){
   document.getElementById('historyModal').style.display = 'none'; 
 }
 
-async function deleteTx(id){
+async function deleteTx(id) {
+  console.log("deleteTx вызвана с id:", id);
   try {
     await fetchWithRetry(`${GAS_WEBAPP_URL}?action=deleteTransaction&id=${id}`);
+    console.log("Запрос отправлен, обновляем историю...");
     await openHistory();
     await reloadAllData();
   } catch (error) {
     alert("Ошибка при удалении: " + error.message);
   }
 }
+
 
 
 // Назначение обработчиков кнопок
